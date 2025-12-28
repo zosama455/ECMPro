@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { FileText, Activity, CheckSquare, Upload, FolderPlus, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { File, RecentActivity, Task } from '../types';
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const { currentDepartment } = useApp();
   const [stats, setStats] = useState({
     totalDocuments: 0,
@@ -85,28 +87,28 @@ export function Dashboard() {
 
   const statCards = [
     {
-      title: 'Total Documents',
+      titleKey: 'dashboard.totalDocuments',
       value: stats.totalDocuments,
       icon: FileText,
       color: 'bg-emerald-500',
       trend: '+12%',
     },
     {
-      title: 'Recent Activity',
+      titleKey: 'dashboard.recentActivity',
       value: stats.recentActivity,
       icon: Activity,
       color: 'bg-blue-500',
       trend: '+5%',
     },
     {
-      title: 'Pending Tasks',
+      titleKey: 'dashboard.pendingTasks',
       value: stats.pendingTasks,
       icon: CheckSquare,
       color: 'bg-amber-500',
       trend: '-3%',
     },
     {
-      title: 'Storage Used',
+      titleKey: 'dashboard.storageUsed',
       value: `${stats.storageUsed} MB`,
       icon: TrendingUp,
       color: 'bg-purple-500',
@@ -118,22 +120,22 @@ export function Dashboard() {
     <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening in {currentDepartment?.name}</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('dashboard.title')}</h1>
+          <p className="text-gray-600">{t('dashboard.welcome', { department: currentDepartment?.name })}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {statCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div key={card.title} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div key={card.titleKey} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <span className="text-sm font-medium text-emerald-600">{card.trend}</span>
                 </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">{card.title}</h3>
+                <h3 className="text-gray-600 text-sm font-medium mb-1">{t(card.titleKey)}</h3>
                 <p className="text-2xl font-bold text-gray-900">{card.value}</p>
               </div>
             );
@@ -144,15 +146,15 @@ export function Dashboard() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Recent Files</h2>
+                <h2 className="text-xl font-bold text-gray-900">{t('dashboard.recentFiles')}</h2>
                 <div className="flex gap-2">
                   <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2 text-sm font-medium">
                     <Upload className="w-4 h-4" />
-                    Upload
+                    {t('dashboard.uploadFile')}
                   </button>
                   <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium">
                     <FolderPlus className="w-4 h-4" />
-                    New Folder
+                    {t('dashboard.newFolder')}
                   </button>
                 </div>
               </div>
@@ -160,7 +162,7 @@ export function Dashboard() {
               {recentFiles.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500">No files yet. Upload your first document!</p>
+                  <p className="text-gray-500">{t('dashboard.noFiles')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -196,11 +198,11 @@ export function Dashboard() {
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Recent Activity</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('dashboard.recentActivity')}</h2>
                 <Activity className="w-5 h-5 text-gray-400" />
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                <p className="text-sm text-gray-500 text-center py-4">{t('dashboard.noActivity')}</p>
               ) : (
                 <div className="space-y-3">
                   {activities.map((activity) => (
@@ -220,11 +222,11 @@ export function Dashboard() {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Pending Tasks</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('dashboard.pendingTasks')}</h2>
                 <CheckSquare className="w-5 h-5 text-gray-400" />
               </div>
               {tasks.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No pending tasks</p>
+                <p className="text-sm text-gray-500 text-center py-4">{t('dashboard.noTasks')}</p>
               ) : (
                 <div className="space-y-3">
                   {tasks.map((task) => (

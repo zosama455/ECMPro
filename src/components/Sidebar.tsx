@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Home, FolderOpen, Settings, ChevronDown, LogOut, Building2, User, Star, Users, Archive, Trash2, Inbox, Search, BarChart3, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface SidebarProps {
   currentView: 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log';
@@ -9,26 +11,27 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarProps) {
+  const { t } = useTranslation();
   const { user, company, departments, currentDepartment, setCurrentDepartment } = useApp();
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'files', label: 'My Files', icon: FolderOpen },
-    { id: 'starred', label: 'Starred', icon: Star },
-    { id: 'shared', label: 'Shared Files', icon: Users },
-    { id: 'archived', label: 'Archived', icon: Archive },
-    { id: 'trash', label: 'Trash', icon: Trash2 },
+    { id: 'dashboard', labelKey: 'nav.dashboard', icon: Home },
+    { id: 'files', labelKey: 'nav.myFiles', icon: FolderOpen },
+    { id: 'starred', labelKey: 'nav.starred', icon: Star },
+    { id: 'shared', labelKey: 'nav.sharedFiles', icon: Users },
+    { id: 'archived', labelKey: 'nav.archived', icon: Archive },
+    { id: 'trash', labelKey: 'nav.trash', icon: Trash2 },
   ] as const;
 
   const taskItems = [
-    { id: 'correspondences', label: 'Correspondences', icon: Inbox },
+    { id: 'correspondences', labelKey: 'nav.correspondences', icon: Inbox },
   ] as const;
 
   const complianceItems = [
-    { id: 'retention', label: 'Retention Dashboard', icon: BarChart3 },
-    { id: 'audit-log', label: 'Activity Audit Log', icon: FileText },
+    { id: 'retention', labelKey: 'nav.retention', icon: BarChart3 },
+    { id: 'audit-log', labelKey: 'nav.auditLog', icon: FileText },
   ] as const;
 
   return (
@@ -72,10 +75,10 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
                     onViewChange('settings');
                     setShowDepartmentDropdown(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 rtl:text-right"
                 >
                   <Settings className="w-4 h-4" />
-                  Settings
+                  {t('common.settings')}
                 </button>
               </div>
             </div>
@@ -89,7 +92,7 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
           className="w-full px-3 py-2 rounded-lg flex items-center gap-3 transition-colors text-gray-300 hover:bg-gray-800 mb-2"
         >
           <Search className="w-5 h-5" />
-          <span className="text-sm font-medium">Search</span>
+          <span className="text-sm font-medium">{t('common.search')}</span>
         </button>
 
         {menuItems.map((item) => {
@@ -107,14 +110,14 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className="text-sm font-medium">{t(item.labelKey)}</span>
             </button>
           );
         })}
 
         <div className="pt-6">
           <h2 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            TASKS
+            {t('nav.tasks')}
           </h2>
           {taskItems.map((item) => {
             const Icon = item.icon;
@@ -131,7 +134,7 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-sm font-medium">{t(item.labelKey)}</span>
               </button>
             );
           })}
@@ -139,7 +142,7 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
 
         <div className="pt-6">
           <h2 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            COMPLIANCE
+            {t('nav.compliance')}
           </h2>
           {complianceItems.map((item) => {
             const Icon = item.icon;
@@ -156,7 +159,7 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-sm font-medium">{t(item.labelKey)}</span>
               </button>
             );
           })}
@@ -164,6 +167,10 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
       </nav>
 
       <div className="p-4 border-t border-gray-800">
+        <div className="mb-3">
+          <LanguageSwitcher />
+        </div>
+
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
@@ -186,10 +193,10 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
                   onViewChange('settings');
                   setShowUserDropdown(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 rtl:text-right"
               >
                 <Settings className="w-4 h-4" />
-                Settings
+                {t('common.settings')}
               </button>
 
               {user?.role === 'admin' && (
@@ -203,10 +210,10 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
 
               <div className="border-t border-gray-700">
                 <button
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 text-red-400"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 text-red-400 rtl:text-right"
                 >
                   <LogOut className="w-4 h-4" />
-                  Logout
+                  {t('common.logout')}
                 </button>
               </div>
             </div>

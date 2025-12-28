@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AppProvider } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -18,9 +19,15 @@ import { ActivityAuditLog } from './components/ActivityAuditLog';
 type View = 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log';
 
 function AppLayout() {
+  const { i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   const getViewFromPath = (pathname: string): View => {
     if (pathname.startsWith('/files')) return 'files';
