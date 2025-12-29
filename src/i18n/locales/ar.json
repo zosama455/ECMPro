@@ -27,6 +27,7 @@
   "nav": {
     "dashboard": "لوحة التحكم",
     "myFiles": "ملفاتي",
+    "batchScan": "المسح الدفعي",
     "starred": "المفضلة",
     "sharedFiles": "الملفات المشتركة",
     "archived": "الأرشيف",

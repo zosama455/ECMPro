@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Home, FolderOpen, Settings, ChevronDown, LogOut, Building2, User, Star, Users, Archive, Trash2, Inbox, Search, BarChart3, FileText } from 'lucide-react';
+import { Home, FolderOpen, Settings, ChevronDown, LogOut, Building2, User, Star, Users, Archive, Trash2, Inbox, Search, BarChart3, FileText, Scan } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log';
-  onViewChange: (view: 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log') => void;
+  currentView: 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log' | 'batch-scan';
+  onViewChange: (view: 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log' | 'batch-scan') => void;
   onSearchClick: () => void;
 }
 
@@ -19,6 +19,7 @@ export function Sidebar({ currentView, onViewChange, onSearchClick }: SidebarPro
   const menuItems = [
     { id: 'dashboard', labelKey: 'nav.dashboard', icon: Home },
     { id: 'files', labelKey: 'nav.myFiles', icon: FolderOpen },
+    { id: 'batch-scan', labelKey: 'nav.batchScan', icon: Scan },
     { id: 'starred', labelKey: 'nav.starred', icon: Star },
     { id: 'shared', labelKey: 'nav.sharedFiles', icon: Users },
     { id: 'archived', labelKey: 'nav.archived', icon: Archive },

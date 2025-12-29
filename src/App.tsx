@@ -15,8 +15,9 @@ import { TaskContext } from './components/TaskContext';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { RetentionDashboard } from './components/RetentionDashboard';
 import { ActivityAuditLog } from './components/ActivityAuditLog';
+import BatchScan from './components/BatchScan';
 
-type View = 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log';
+type View = 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log' | 'batch-scan';
 
 function AppLayout() {
   const { i18n } = useTranslation();
@@ -38,6 +39,7 @@ function AppLayout() {
     if (pathname.startsWith('/correspondences') || pathname.startsWith('/tasks/correspondences')) return 'correspondences';
     if (pathname.startsWith('/retention')) return 'retention';
     if (pathname.startsWith('/activity-audit-log')) return 'audit-log';
+    if (pathname.startsWith('/batch-scan')) return 'batch-scan';
     if (pathname.startsWith('/settings')) return 'settings';
     return 'dashboard';
   };
@@ -53,6 +55,7 @@ function AppLayout() {
       correspondences: '/correspondences',
       retention: '/retention',
       'audit-log': '/activity-audit-log',
+      'batch-scan': '/batch-scan',
       settings: '/settings',
     };
     navigate(routes[view]);
@@ -77,6 +80,7 @@ function AppLayout() {
         <Route path="/tasks/correspondences/:taskId/*" element={<TaskContext />} />
         <Route path="/retention" element={<RetentionDashboard />} />
         <Route path="/activity-audit-log" element={<ActivityAuditLog />} />
+        <Route path="/batch-scan" element={<BatchScan />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
