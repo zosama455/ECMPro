@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Upload,
@@ -20,15 +20,20 @@ import {
   Video,
   FileSpreadsheet,
   Share2,
+  Lock,
+  CheckCircle,
+  MoreVertical,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { File, Folder } from '../types';
+import { SetConfidentialityModal } from './SetConfidentialityModal';
 
 type ViewMode = 'grid' | 'list';
+type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
 
 export function MyFiles() {
-  const { currentDepartment } = useApp();
+  const { currentDepartment, user } = useApp();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -37,6 +42,12 @@ export function MyFiles() {
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [showModal, setShowModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; name: string } | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: '', show: false });
+  const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState({
     fileType: 'Any',
     status: 'Any',
@@ -75,6 +86,78 @@ export function MyFiles() {
 
     setFiles(filesData || []);
     setFolders(foldersData || []);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    const mockFile: File = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: selectedFile.name,
+      file_type: selectedFile.name.split('.').pop() || 'file',
+      file_size: selectedFile.size,
+      file_url: URL.createObjectURL(selectedFile),
+      department_id: currentDepartment?.id || '',
+      uploaded_by: user?.id,
+      status: 'draft',
+      confidentiality: 'internal',
+      tags: [],
+      created_at: new Date().toISOString(),
+      modified_at: new Date().toISOString(),
+    };
+
+    setPendingFile({ file: mockFile, name: selectedFile.name });
+    setShowModal(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfidentialityConfirm = (confidentiality: ConfidentialityLevel, assignees: string[]) => {
+    if (editingFile) {
+      const updatedFiles = files.map((f) =>
+        f.id === editingFile.id ? { ...f, confidentiality, assignees } : f
+      );
+      setFiles(updatedFiles);
+      showToast('Confidentiality updated successfully');
+      setEditingFile(null);
+    } else if (pendingFile) {
+      const newFile: File = {
+        ...pendingFile.file,
+        confidentiality,
+        assignees,
+      };
+      setFiles([newFile, ...files]);
+      showToast('File uploaded with confidentiality applied');
+      setPendingFile(null);
+    }
+    setShowModal(false);
+  };
+
+  const handleEditConfidentiality = (file: File) => {
+    setEditingFile(file);
+    setShowModal(true);
+    setFileMenuOpen(null);
+  };
+
+  const showToast = (message: string) => {
+    setToast({ message, show: true });
+    setTimeout(() => setToast({ message: '', show: false }), 3000);
+  };
+
+  const canUserAccessFile = (file: File): boolean => {
+    const currentUser = user?.full_name || 'John Doe';
+
+    if (file.confidentiality === 'public') return true;
+
+    if (file.uploaded_by === user?.id) return true;
+
+    if (file.assignees && file.assignees.includes(currentUser)) return true;
+
+    if (user?.role === 'admin' || user?.site_department_manager) return true;
+
+    return false;
   };
 
   const navigateToFolder = (folder: Folder) => {
@@ -147,6 +230,8 @@ export function MyFiles() {
   };
 
   const filteredFiles = files.filter((file) => {
+    if (!canUserAccessFile(file)) return false;
+
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filters.status === 'Any' || file.status === filters.status.toLowerCase();
     const matchesConfidentiality =
@@ -180,9 +265,17 @@ export function MyFiles() {
         return 'bg-orange-100 text-orange-700';
       case 'restricted':
         return 'bg-red-100 text-red-700';
+      case 'secret':
+        return 'bg-red-200 text-red-800';
+      case 'top_secret':
+        return 'bg-red-300 text-red-900';
       default:
         return 'bg-gray-100 text-gray-700';
     }
+  };
+
+  const isRestrictedFile = (confidentiality: string) => {
+    return ['confidential', 'secret', 'top_secret'].includes(confidentiality);
   };
 
   const totalFiles = files.length + folders.length;
@@ -203,7 +296,16 @@ export function MyFiles() {
             </div>
 
             <div className="flex gap-3">
-              <button className="px-5 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium shadow-sm">
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium shadow-sm"
+              >
                 <Upload className="w-4 h-4" />
                 Upload File
               </button>
@@ -308,6 +410,8 @@ export function MyFiles() {
                       <option>Internal</option>
                       <option>Confidential</option>
                       <option>Restricted</option>
+                      <option>Secret</option>
+                      <option>Top Secret</option>
                     </select>
                   </div>
 
@@ -377,18 +481,46 @@ export function MyFiles() {
                       key={file.id}
                       className="relative p-4 border border-gray-200 rounded-lg hover:border-emerald-300 hover:shadow-sm transition-all group"
                     >
-                      <button className="absolute top-2 right-2 p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded transition-opacity">
-                        <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                          <circle cx="12" cy="5" r="2"/>
-                          <circle cx="12" cy="12" r="2"/>
-                          <circle cx="12" cy="19" r="2"/>
-                        </svg>
-                      </button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        {isRestrictedFile(file.confidentiality) && (
+                          <div className="bg-red-100 p-1.5 rounded">
+                            <Lock className="w-4 h-4 text-red-600" />
+                          </div>
+                        )}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFileMenuOpen(fileMenuOpen === file.id ? null : file.id);
+                            }}
+                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded transition-opacity"
+                          >
+                            <MoreVertical className="w-5 h-5 text-gray-600" />
+                          </button>
+                          {fileMenuOpen === file.id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                              <button
+                                onClick={() => handleEditConfidentiality(file)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Lock className="w-4 h-4" />
+                                Edit Confidentiality
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center mb-3 mx-auto`}>
                         <Icon className={`w-6 h-6 ${color}`} />
                       </div>
                       <p className="text-xs font-medium text-gray-900 text-center truncate mb-1">{file.name}</p>
                       <p className="text-xs text-gray-500 text-center">{formatFileSize(file.file_size)}</p>
+                      {isRestrictedFile(file.confidentiality) && (
+                        <div className="mt-2 flex items-center justify-center gap-1">
+                          <Lock className="w-3 h-3 text-red-600" />
+                          <span className="text-xs font-medium text-red-600">Restricted</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -508,16 +640,56 @@ export function MyFiles() {
                         <Icon className={`w-7 h-7 ${color}`} />
                       </div>
 
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        {isRestrictedFile(file.confidentiality) && (
+                          <div className="bg-red-100 p-1.5 rounded">
+                            <Lock className="w-4 h-4 text-red-600" />
+                          </div>
+                        )}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFileMenuOpen(fileMenuOpen === file.id ? null : file.id);
+                            }}
+                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            <MoreVertical className="w-5 h-5 text-gray-600" />
+                          </button>
+                          {fileMenuOpen === file.id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                              <button
+                                onClick={() => handleEditConfidentiality(file)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Lock className="w-4 h-4" />
+                                Edit Confidentiality
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <p className="text-sm font-semibold text-gray-900 mb-3 truncate">{file.name}</p>
 
                       <div className="flex flex-wrap gap-2 mb-3">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusBadgeStyles(file.status)}`}>
                           {file.status}
                         </span>
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getConfidentialityBadgeStyles(file.confidentiality)}`}>
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 ${getConfidentialityBadgeStyles(file.confidentiality)}`}>
+                          {isRestrictedFile(file.confidentiality) && <Lock className="w-3 h-3" />}
                           {file.confidentiality}
                         </span>
                       </div>
+
+                      {isRestrictedFile(file.confidentiality) && file.assignees && file.assignees.length > 0 && (
+                        <div className="mb-3 p-2 bg-amber-50 rounded-lg">
+                          <p className="text-xs font-medium text-amber-800 mb-1">Authorized Users:</p>
+                          <p className="text-xs text-amber-700">{file.assignees.slice(0, 2).join(', ')}
+                            {file.assignees.length > 2 && ` +${file.assignees.length - 2} more`}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="space-y-1 text-xs text-gray-600 mb-3">
                         <div className="flex justify-between">
@@ -601,7 +773,8 @@ export function MyFiles() {
                           <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusBadgeStyles(file.status)}`}>
                             {file.status}
                           </span>
-                          <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getConfidentialityBadgeStyles(file.confidentiality)}`}>
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 ${getConfidentialityBadgeStyles(file.confidentiality)}`}>
+                            {isRestrictedFile(file.confidentiality) && <Lock className="w-3 h-3" />}
                             {file.confidentiality}
                           </span>
                           {file.tags.map((tag, idx) => (
@@ -609,6 +782,28 @@ export function MyFiles() {
                               #{tag}
                             </span>
                           ))}
+                          <div className="relative ml-auto">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFileMenuOpen(fileMenuOpen === file.id ? null : file.id);
+                              }}
+                              className="p-1 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              <MoreVertical className="w-5 h-5 text-gray-600" />
+                            </button>
+                            {fileMenuOpen === file.id && (
+                              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                <button
+                                  onClick={() => handleEditConfidentiality(file)}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Lock className="w-4 h-4" />
+                                  Edit Confidentiality
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -645,6 +840,27 @@ export function MyFiles() {
         </div>
 
       </div>
+
+      <SetConfidentialityModal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setPendingFile(null);
+          setEditingFile(null);
+        }}
+        onConfirm={handleConfidentialityConfirm}
+        fileName={editingFile?.name || pendingFile?.name || ''}
+        mode={editingFile ? 'edit' : 'upload'}
+        existingConfidentiality={editingFile?.confidentiality as any}
+        existingAssignees={editingFile?.assignees}
+      />
+
+      {toast.show && (
+        <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-up">
+          <CheckCircle className="w-5 h-5" />
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

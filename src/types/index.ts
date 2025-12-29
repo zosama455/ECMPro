@@ -56,10 +56,11 @@ export interface File {
   department_id: string;
   uploaded_by?: string;
   status: 'draft' | 'review' | 'approved' | 'archived';
-  confidentiality: 'public' | 'internal' | 'confidential' | 'restricted';
+  confidentiality: 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
   tags: string[];
   created_at: string;
   modified_at: string;
+  assignees?: string[];
 }
 
 export interface RecentActivity {
