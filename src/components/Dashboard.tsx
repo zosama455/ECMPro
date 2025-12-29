@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Activity, CheckSquare, TrendingUp, Clock } from 'lucide-react';
+import { FileText, Activity, CheckSquare, TrendingUp, Clock, Edit3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { RecentActivity, Task } from '../types';
+import { RecentActivity, Task, File } from '../types';
 
 export function Dashboard() {
   const { t } = useTranslation();
@@ -16,6 +16,9 @@ export function Dashboard() {
   });
   const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [siteContentTab, setSiteContentTab] = useState<'modified' | 'editing'>('modified');
+  const [recentlyModifiedFiles, setRecentlyModifiedFiles] = useState<File[]>([]);
+  const [editingFiles, setEditingFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (currentDepartment) {
@@ -46,10 +49,27 @@ export function Dashboard() {
       .order('due_date', { ascending: true })
       .limit(5);
 
+    const { data: modifiedFiles } = await supabase
+      .from('files')
+      .select('*')
+      .eq('department_id', currentDepartment.id)
+      .order('modified_at', { ascending: false })
+      .limit(5);
+
+    const { data: filesInProgress } = await supabase
+      .from('files')
+      .select('*')
+      .eq('department_id', currentDepartment.id)
+      .in('status', ['draft', 'review'])
+      .order('modified_at', { ascending: false })
+      .limit(5);
+
     const totalStorage = allFiles?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
 
     setActivities(activityData || []);
     setTasks(taskData || []);
+    setRecentlyModifiedFiles(modifiedFiles || []);
+    setEditingFiles(filesInProgress || []);
     setStats({
       totalDocuments: allFiles?.length || 0,
       recentActivity: activityData?.length || 0,
@@ -68,6 +88,21 @@ export function Dashboard() {
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
     return date.toLocaleDateString();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileTypeColor = (fileType: string) => {
+    const type = fileType.toLowerCase();
+    if (['pdf', 'doc', 'docx', 'txt'].includes(type)) return { bg: 'bg-blue-100', text: 'text-blue-600' };
+    if (['xlsx', 'xls', 'csv'].includes(type)) return { bg: 'bg-green-100', text: 'text-green-600' };
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(type)) return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
+    if (['mp4', 'avi', 'mov'].includes(type)) return { bg: 'bg-purple-100', text: 'text-purple-600' };
+    return { bg: 'bg-gray-100', text: 'text-gray-600' };
   };
 
   const statCards = [
@@ -125,6 +160,116 @@ export function Dashboard() {
               </div>
             );
           })}
+        </div>
+
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Site Content</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSiteContentTab('modified')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    siteContentTab === 'modified'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  I Recently Modified
+                </button>
+                <button
+                  onClick={() => setSiteContentTab('editing')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    siteContentTab === 'editing'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  I'm Editing
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {siteContentTab === 'modified' ? (
+                recentlyModifiedFiles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No recently modified files</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentlyModifiedFiles.map((file) => {
+                      const colors = getFileTypeColor(file.file_type);
+                      return (
+                        <div
+                          key={file.id}
+                          className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer border border-gray-200"
+                        >
+                          <div className={`w-10 h-10 ${colors.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                            <FileText className={`w-5 h-5 ${colors.text}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{file.name}</p>
+                            <p className="text-sm text-gray-500">
+                              Modified {formatDate(file.modified_at)} • {formatFileSize(file.file_size)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${
+                              file.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                              file.status === 'review' ? 'bg-amber-100 text-amber-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {file.status}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                editingFiles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Edit3 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No files currently being edited</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {editingFiles.map((file) => {
+                      const colors = getFileTypeColor(file.file_type);
+                      return (
+                        <div
+                          key={file.id}
+                          className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer border border-gray-200"
+                        >
+                          <div className={`w-10 h-10 ${colors.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                            <FileText className={`w-5 h-5 ${colors.text}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{file.name}</p>
+                            <p className="text-sm text-gray-500">
+                              Last modified {formatDate(file.modified_at)} • {formatFileSize(file.file_size)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 ${
+                              file.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              <Edit3 className="w-3 h-3" />
+                              {file.status}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

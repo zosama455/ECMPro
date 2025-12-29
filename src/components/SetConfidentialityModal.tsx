@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Search, UserPlus } from 'lucide-react';
 
-type ConfidentialityLevel = 'public' | 'confidential' | 'secret' | 'top_secret';
+type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
 
 interface SetConfidentialityModalProps {
   isOpen: boolean;
@@ -50,6 +50,25 @@ export function SetConfidentialityModal({
   }, [isOpen, existingConfidentiality, existingAssignees]);
 
   if (!isOpen) return null;
+
+  const confidentialityHierarchy: ConfidentialityLevel[] = [
+    'public',
+    'internal',
+    'confidential',
+    'restricted',
+    'secret',
+    'top_secret'
+  ];
+
+  const getMinimumConfidentialityIndex = () => {
+    if (mode === 'edit' && existingConfidentiality) {
+      return confidentialityHierarchy.indexOf(existingConfidentiality);
+    }
+    return 0;
+  };
+
+  const minimumConfidentialityIndex = getMinimumConfidentialityIndex();
+  const allowedLevels = confidentialityHierarchy.slice(minimumConfidentialityIndex);
 
   const requiresAssignees = confidentiality && confidentiality !== 'public';
   const isValid = confidentiality && (!requiresAssignees || assignees.length > 0);
@@ -119,11 +138,18 @@ export function SetConfidentialityModal({
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="">Select confidentiality level...</option>
-              <option value="public">Public</option>
-              <option value="confidential">Confidential</option>
-              <option value="secret">Secret</option>
-              <option value="top_secret">Top Secret</option>
+              {allowedLevels.map((level) => (
+                <option key={level} value={level}>
+                  {level.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                </option>
+              ))}
             </select>
+            {mode === 'edit' && existingConfidentiality && (
+              <p className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>You can only maintain or increase the confidentiality level. Current level: <strong>{existingConfidentiality.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</strong></span>
+              </p>
+            )}
           </div>
 
           {confidentiality === 'public' && (
