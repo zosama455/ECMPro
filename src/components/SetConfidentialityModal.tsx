@@ -181,7 +181,7 @@ export function SetConfidentialityModal({
                 )}
               </div>
 
-              {assignees.length > 0 && (
+              {assignees.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {assignees.map((user) => (
                     <div
@@ -197,6 +197,12 @@ export function SetConfidentialityModal({
                       </button>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700 font-medium">
+                    Please select at least one assignee.
+                  </p>
                 </div>
               )}
 
