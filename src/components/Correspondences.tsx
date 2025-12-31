@@ -11,12 +11,16 @@ import {
   User,
   Users,
   FileText,
+  Plus,
+  Plane,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { Task } from '../types';
+import { VacationRequestModal } from './VacationRequestModal';
+import { VacationRequestsList } from './VacationRequestsList';
 
-type TabScope = 'assigned' | 'started' | 'department';
+type TabScope = 'assigned' | 'started' | 'department' | 'vacation-requests';
 
 interface ExtendedTask extends Task {
   workflow_type?: string;
@@ -57,6 +61,8 @@ export function Correspondences() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [showVacationModal, setShowVacationModal] = useState(false);
+  const [vacationViewMode, setVacationViewMode] = useState<'my-requests' | 'department-requests'>('my-requests');
 
   const [filters, setFilters] = useState<Filters>({
     status: 'Any',
@@ -223,6 +229,9 @@ export function Correspondences() {
   const getTabTitle = () => {
     if (activeTab === 'assigned') return 'Assigned to Me';
     if (activeTab === 'started') return 'Started by Me';
+    if (activeTab === 'vacation-requests') {
+      return vacationViewMode === 'my-requests' ? 'My Vacation Requests' : 'Department Vacation Requests';
+    }
     return 'Department Tasks';
   };
 
@@ -311,30 +320,85 @@ export function Correspondences() {
                   </div>
                 </button>
               )}
+              <button
+                onClick={() => {
+                  setActiveTab('vacation-requests');
+                  setCurrentPage(1);
+                  setVacationViewMode('my-requests');
+                }}
+                className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                  activeTab === 'vacation-requests'
+                    ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Plane className="w-4 h-4" />
+                  Vacation Requests
+                </div>
+              </button>
             </div>
           </div>
 
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2.5 border rounded-lg flex items-center gap-2 font-medium transition-colors ${
-                  showFilters
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-                {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-
-              <div className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages || 1} ({totalCount} total)
+            {activeTab === 'vacation-requests' ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setVacationViewMode('my-requests')}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                        vacationViewMode === 'my-requests'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      My Requests
+                    </button>
+                    {canManageDepartment && (
+                      <button
+                        onClick={() => setVacationViewMode('department-requests')}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                          vacationViewMode === 'department-requests'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Department Requests
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowVacationModal(true)}
+                    className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    New Request
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`px-4 py-2.5 border rounded-lg flex items-center gap-2 font-medium transition-colors ${
+                    showFilters
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                  {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
 
-            {showFilters && (
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages || 1} ({totalCount} total)
+                </div>
+              </div>
+            )}
+
+            {showFilters && activeTab !== 'vacation-requests' && (
               <div className="pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                   <div>
@@ -450,8 +514,13 @@ export function Correspondences() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {tasks.length === 0 ? (
+        {activeTab === 'vacation-requests' ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <VacationRequestsList viewMode={vacationViewMode} />
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            {tasks.length === 0 ? (
             <div className="text-center py-12">
               <Inbox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
@@ -629,7 +698,19 @@ export function Correspondences() {
               )}
             </>
           )}
-        </div>
+          </div>
+        )}
+
+        <VacationRequestModal
+          isOpen={showVacationModal}
+          onClose={() => setShowVacationModal(false)}
+          onSuccess={() => {
+            setShowVacationModal(false);
+            if (activeTab === 'vacation-requests') {
+              window.location.reload();
+            }
+          }}
+        />
       </div>
     </div>
   );
