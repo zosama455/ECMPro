@@ -90,7 +90,6 @@ export function FileCheckoutMenu({
       setSuccess('File checked in successfully. New version created.');
       await loadCheckoutInfo();
       onCheckoutChange();
-      setTimeout(() => onClose(), 2000);
     } else {
       setError(result.error || 'Failed to check in file');
     }
@@ -108,10 +107,9 @@ export function FileCheckoutMenu({
     const result = await checkoutService.cancelCheckout(fileId, user.id, isManager);
 
     if (result.success) {
-      setSuccess('Checkout cancelled successfully.');
+      setSuccess('Checkout cancelled successfully. You can now close this dialog.');
       await loadCheckoutInfo();
       onCheckoutChange();
-      setTimeout(() => onClose(), 2000);
     } else {
       setError(result.error || 'Failed to cancel checkout');
     }

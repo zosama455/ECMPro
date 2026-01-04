@@ -30,6 +30,7 @@ import { supabase } from '../lib/supabase';
 import { File, Folder } from '../types';
 import { SetConfidentialityModal } from './SetConfidentialityModal';
 import { FileCheckoutMenu } from './FileCheckoutMenu';
+import { UploadVersionModal } from './UploadVersionModal';
 
 type ViewMode = 'grid' | 'list';
 type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
@@ -50,6 +51,7 @@ export function MyFiles() {
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: '', show: false });
   const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null);
   const [checkoutMenuFile, setCheckoutMenuFile] = useState<File | null>(null);
+  const [versionUploadFile, setVersionUploadFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState({
     fileType: 'Any',
@@ -154,6 +156,16 @@ export function MyFiles() {
 
   const handleCheckoutChange = () => {
     loadFiles();
+  };
+
+  const handleUploadVersion = (file: File) => {
+    setVersionUploadFile(file);
+    setFileMenuOpen(null);
+  };
+
+  const handleVersionUploadSuccess = () => {
+    loadFiles();
+    showToast('New version uploaded successfully');
   };
 
   const showToast = (message: string) => {
@@ -592,13 +604,20 @@ export function MyFiles() {
                             <MoreVertical className="w-5 h-5 text-gray-600" />
                           </button>
                           {fileMenuOpen === file.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                            <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                               <button
                                 onClick={() => handleEditOffline(file)}
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
                               >
                                 <Edit className="w-4 h-4" />
                                 Edit Offline
+                              </button>
+                              <button
+                                onClick={() => handleUploadVersion(file)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
+                              >
+                                <Upload className="w-4 h-4" />
+                                Upload New Version
                               </button>
                               <button
                                 onClick={() => handleEditConfidentiality(file)}
@@ -747,13 +766,20 @@ export function MyFiles() {
                               <MoreVertical className="w-5 h-5 text-gray-600" />
                             </button>
                             {fileMenuOpen === file.id && (
-                              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                              <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                                 <button
                                   onClick={() => handleEditOffline(file)}
                                   className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
                                 >
                                   <Edit className="w-4 h-4" />
                                   Edit Offline
+                                </button>
+                                <button
+                                  onClick={() => handleUploadVersion(file)}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
+                                >
+                                  <Upload className="w-4 h-4" />
+                                  Upload New Version
                                 </button>
                                 <button
                                   onClick={() => handleEditConfidentiality(file)}
@@ -830,6 +856,17 @@ export function MyFiles() {
           fileUrl={checkoutMenuFile.file_url}
           onClose={() => setCheckoutMenuFile(null)}
           onCheckoutChange={handleCheckoutChange}
+        />
+      )}
+
+      {versionUploadFile && currentDepartment && (
+        <UploadVersionModal
+          fileId={versionUploadFile.id}
+          fileName={versionUploadFile.name}
+          currentVersion={(versionUploadFile as any).version_number || 1}
+          departmentId={currentDepartment.id}
+          onClose={() => setVersionUploadFile(null)}
+          onSuccess={handleVersionUploadSuccess}
         />
       )}
     </div>
