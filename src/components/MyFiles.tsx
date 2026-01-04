@@ -23,11 +23,13 @@ import {
   Lock,
   CheckCircle,
   MoreVertical,
+  Edit,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { File, Folder } from '../types';
 import { SetConfidentialityModal } from './SetConfidentialityModal';
+import { FileCheckoutMenu } from './FileCheckoutMenu';
 
 type ViewMode = 'grid' | 'list';
 type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
@@ -47,6 +49,7 @@ export function MyFiles() {
   const [editingFile, setEditingFile] = useState<File | null>(null);
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: '', show: false });
   const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null);
+  const [checkoutMenuFile, setCheckoutMenuFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState({
     fileType: 'Any',
@@ -68,7 +71,10 @@ export function MyFiles() {
 
     let filesQuery = supabase
       .from('files')
-      .select('*')
+      .select(`
+        *,
+        checked_out_user:users!files_checked_out_by_fkey(full_name)
+      `)
       .eq('department_id', currentDepartment.id);
 
     if (currentFolder) {
@@ -139,6 +145,15 @@ export function MyFiles() {
     setEditingFile(file);
     setShowModal(true);
     setFileMenuOpen(null);
+  };
+
+  const handleEditOffline = (file: File) => {
+    setCheckoutMenuFile(file);
+    setFileMenuOpen(null);
+  };
+
+  const handleCheckoutChange = () => {
+    loadFiles();
   };
 
   const showToast = (message: string) => {
@@ -561,6 +576,11 @@ export function MyFiles() {
                             <Lock className="w-4 h-4 text-red-600" />
                           </div>
                         )}
+                        {(file as any).checked_out && (
+                          <div className="bg-amber-100 p-1.5 rounded" title={`Checked out by ${(file as any).checked_out_user?.full_name || 'Unknown'}`}>
+                            <Lock className="w-4 h-4 text-amber-600" />
+                          </div>
+                        )}
                         <div className="relative">
                           <button
                             onClick={(e) => {
@@ -574,6 +594,13 @@ export function MyFiles() {
                           {fileMenuOpen === file.id && (
                             <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                               <button
+                                onClick={() => handleEditOffline(file)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit Offline
+                              </button>
+                              <button
                                 onClick={() => handleEditConfidentiality(file)}
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                               >
@@ -585,7 +612,13 @@ export function MyFiles() {
                         </div>
                       </div>
 
-                      <p className="text-sm font-semibold text-gray-900 mb-3 truncate">{file.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 mb-1 truncate">{file.name}</p>
+                      {(file as any).checked_out && (
+                        <p className="text-xs text-amber-600 mb-2 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Checked out by {(file as any).checked_out_user?.full_name || 'Unknown'}
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap gap-2 mb-3">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusBadgeStyles(file.status)}`}>
@@ -697,6 +730,12 @@ export function MyFiles() {
                               #{tag}
                             </span>
                           ))}
+                          {(file as any).checked_out && (
+                            <span className="text-xs text-amber-600 flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              {(file as any).checked_out_user?.full_name || 'Checked out'}
+                            </span>
+                          )}
                           <div className="relative ml-auto">
                             <button
                               onClick={(e) => {
@@ -709,6 +748,13 @@ export function MyFiles() {
                             </button>
                             {fileMenuOpen === file.id && (
                               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                <button
+                                  onClick={() => handleEditOffline(file)}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  Edit Offline
+                                </button>
                                 <button
                                   onClick={() => handleEditConfidentiality(file)}
                                   className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
@@ -775,6 +821,16 @@ export function MyFiles() {
           <CheckCircle className="w-5 h-5" />
           <span className="font-medium">{toast.message}</span>
         </div>
+      )}
+
+      {checkoutMenuFile && (
+        <FileCheckoutMenu
+          fileId={checkoutMenuFile.id}
+          fileName={checkoutMenuFile.name}
+          fileUrl={checkoutMenuFile.file_url}
+          onClose={() => setCheckoutMenuFile(null)}
+          onCheckoutChange={handleCheckoutChange}
+        />
       )}
     </div>
   );
