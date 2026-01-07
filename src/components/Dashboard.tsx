@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Activity, CheckSquare, TrendingUp, Clock, Edit3 } from 'lucide-react';
+import { FileText, Activity, CheckSquare, TrendingUp, Clock, Edit3, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { RecentActivity, Task, File } from '../types';
 
+type ActivityScope = 'my' | 'others' | 'everyone' | 'following';
+type ItemType = 'all' | 'comments' | 'content' | 'memberships';
+type TimeRange = 'today' | '7days' | '14days' | '28days';
+
 export function Dashboard() {
   const { t } = useTranslation();
-  const { currentDepartment } = useApp();
+  const { currentDepartment, user } = useApp();
   const [stats, setStats] = useState({
     totalDocuments: 0,
     recentActivity: 0,
@@ -19,12 +23,109 @@ export function Dashboard() {
   const [siteContentTab, setSiteContentTab] = useState<'modified' | 'editing'>('modified');
   const [recentlyModifiedFiles, setRecentlyModifiedFiles] = useState<File[]>([]);
   const [editingFiles, setEditingFiles] = useState<File[]>([]);
+  const [activityScope, setActivityScope] = useState<ActivityScope>('my');
+  const [itemType, setItemType] = useState<ItemType>('all');
+  const [timeRange, setTimeRange] = useState<TimeRange>('7days');
+  const [showScopeDropdown, setShowScopeDropdown] = useState(false);
+  const [showItemTypeDropdown, setShowItemTypeDropdown] = useState(false);
+  const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
 
   useEffect(() => {
     if (currentDepartment) {
       loadDashboardData();
     }
   }, [currentDepartment]);
+
+  useEffect(() => {
+    if (currentDepartment) {
+      loadActivities();
+    }
+  }, [currentDepartment, activityScope, itemType, timeRange]);
+
+  const getTimeRangeDate = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (timeRange) {
+      case 'today':
+        return today.toISOString();
+      case '7days':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      case '14days':
+        return new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      case '28days':
+        return new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString();
+      default:
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    }
+  };
+
+  const loadActivities = async () => {
+    if (!currentDepartment || !user) return;
+
+    const fromDate = getTimeRangeDate();
+    let query = supabase
+      .from('audit_log')
+      .select('*, user:users!audit_log_user_id_fkey(full_name)')
+      .eq('department_id', currentDepartment.id)
+      .gte('created_at', fromDate)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (activityScope === 'my') {
+      query = query.eq('user_id', user.id);
+    } else if (activityScope === 'others') {
+      query = query.neq('user_id', user.id);
+    }
+
+    if (itemType === 'content') {
+      query = query.eq('entity_type', 'file');
+    } else if (itemType === 'memberships') {
+      query = query.in('action', ['user_added', 'user_removed', 'role_changed']);
+    } else if (itemType === 'comments') {
+      query = query.eq('entity_type', 'comment');
+    }
+
+    const { data: auditData } = await query;
+
+    const formattedActivities: RecentActivity[] = (auditData || []).map((audit: any) => ({
+      id: audit.id,
+      user_id: audit.user_id,
+      department_id: audit.department_id,
+      activity_type: audit.action,
+      entity_type: audit.entity_type,
+      entity_id: audit.entity_id,
+      entity_name: audit.details?.file_name || audit.entity_type,
+      description: getActivityDescription(audit),
+      created_at: audit.created_at,
+    }));
+
+    setActivities(formattedActivities);
+  };
+
+  const getActivityDescription = (audit: any) => {
+    const userName = audit.user?.full_name || 'Unknown user';
+    const action = audit.action;
+    const entityType = audit.entity_type;
+    const fileName = audit.details?.file_name || 'a document';
+
+    switch (action) {
+      case 'version_uploaded':
+        return `${userName} uploaded version ${audit.details?.version_to} of ${fileName}`;
+      case 'checked_out':
+        return `${userName} checked out ${fileName}`;
+      case 'checked_in':
+        return `${userName} checked in ${fileName}`;
+      case 'created':
+        return `${userName} created ${entityType} ${fileName}`;
+      case 'updated':
+        return `${userName} updated ${entityType} ${fileName}`;
+      case 'deleted':
+        return `${userName} deleted ${entityType} ${fileName}`;
+      default:
+        return `${userName} performed ${action} on ${entityType}`;
+    }
+  };
 
   const loadDashboardData = async () => {
     if (!currentDepartment) return;
@@ -35,11 +136,11 @@ export function Dashboard() {
       .eq('department_id', currentDepartment.id);
 
     const { data: activityData } = await supabase
-      .from('recent_activity')
+      .from('audit_log')
       .select('*')
       .eq('department_id', currentDepartment.id)
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(100);
 
     const { data: taskData } = await supabase
       .from('tasks')
@@ -66,7 +167,6 @@ export function Dashboard() {
 
     const totalStorage = allFiles?.reduce((sum, f) => sum + (f.file_size || 0), 0) || 0;
 
-    setActivities(activityData || []);
     setTasks(taskData || []);
     setRecentlyModifiedFiles(modifiedFiles || []);
     setEditingFiles(filesInProgress || []);
@@ -273,28 +373,166 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">{t('dashboard.recentActivity')}</h2>
-              <Activity className="w-5 h-5 text-gray-400" />
-            </div>
-            {activities.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">{t('dashboard.noActivity')}</p>
-            ) : (
-              <div className="space-y-3">
-                {activities.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Activity className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-900 mb-3">My Activities</h2>
+              <div className="flex flex-wrap gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowScopeDropdown(!showScopeDropdown);
+                      setShowItemTypeDropdown(false);
+                      setShowTimeRangeDropdown(false);
+                    }}
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+                  >
+                    {activityScope === 'my' && "My activities"}
+                    {activityScope === 'others' && "Everyone else's activities"}
+                    {activityScope === 'everyone' && "Everyone's activities"}
+                    {activityScope === 'following' && "I'm following"}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {showScopeDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => { setActivityScope('my'); setShowScopeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        My activities
+                      </button>
+                      <button
+                        onClick={() => { setActivityScope('others'); setShowScopeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        Everyone else's activities
+                      </button>
+                      <button
+                        onClick={() => { setActivityScope('everyone'); setShowScopeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        Everyone's activities
+                      </button>
+                      <button
+                        onClick={() => { setActivityScope('following'); setShowScopeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                      >
+                        I'm following
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900">{activity.description}</p>
-                      <p className="text-xs text-gray-500">{formatDate(activity.created_at)}</p>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowItemTypeDropdown(!showItemTypeDropdown);
+                      setShowScopeDropdown(false);
+                      setShowTimeRangeDropdown(false);
+                    }}
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+                  >
+                    {itemType === 'all' && "all items"}
+                    {itemType === 'comments' && "comments"}
+                    {itemType === 'content' && "content"}
+                    {itemType === 'memberships' && "memberships"}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {showItemTypeDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => { setItemType('all'); setShowItemTypeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        all items
+                      </button>
+                      <button
+                        onClick={() => { setItemType('comments'); setShowItemTypeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        comments
+                      </button>
+                      <button
+                        onClick={() => { setItemType('content'); setShowItemTypeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        content
+                      </button>
+                      <button
+                        onClick={() => { setItemType('memberships'); setShowItemTypeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                      >
+                        memberships
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowTimeRangeDropdown(!showTimeRangeDropdown);
+                      setShowScopeDropdown(false);
+                      setShowItemTypeDropdown(false);
+                    }}
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+                  >
+                    {timeRange === 'today' && "today"}
+                    {timeRange === '7days' && "in the last 7 days"}
+                    {timeRange === '14days' && "in the last 14 days"}
+                    {timeRange === '28days' && "in the last 28 days"}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {showTimeRangeDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => { setTimeRange('today'); setShowTimeRangeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        today
+                      </button>
+                      <button
+                        onClick={() => { setTimeRange('7days'); setShowTimeRangeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        in the last 7 days
+                      </button>
+                      <button
+                        onClick={() => { setTimeRange('14days'); setShowTimeRangeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        in the last 14 days
+                      </button>
+                      <button
+                        onClick={() => { setTimeRange('28days'); setShowTimeRangeDropdown(false); }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                      >
+                        in the last 28 days
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
+
+            <div className="p-6">
+              {activities.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">No activities found</p>
+              ) : (
+                <div className="space-y-3">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Activity className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        <p className="text-xs text-gray-500">{formatDate(activity.created_at)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
