@@ -28,6 +28,7 @@ export interface User {
   can_read_confidential_docs?: boolean;
   can_read_secret_docs?: boolean;
   can_read_top_secret_docs?: boolean;
+  can_change_edit_archived_docs_status?: boolean;
 }
 
 export interface DepartmentMember {
@@ -44,6 +45,7 @@ export interface Folder {
   department_id: string;
   created_by?: string;
   created_at: string;
+  is_leaf?: boolean;
 }
 
 export interface File {

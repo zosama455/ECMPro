@@ -31,6 +31,7 @@ import { File, Folder } from '../types';
 import { SetConfidentialityModal } from './SetConfidentialityModal';
 import { FileCheckoutMenu } from './FileCheckoutMenu';
 import { UploadVersionModal } from './UploadVersionModal';
+import { NCARMetadataModal, NCARMetadata } from './NCARMetadataModal';
 
 type ViewMode = 'grid' | 'list';
 type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
@@ -52,6 +53,8 @@ export function MyFiles() {
   const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null);
   const [checkoutMenuFile, setCheckoutMenuFile] = useState<File | null>(null);
   const [versionUploadFile, setVersionUploadFile] = useState<File | null>(null);
+  const [showNCARModal, setShowNCARModal] = useState(false);
+  const [ncarPendingFile, setNCARPendingFile] = useState<{ file: File; rawFile: File } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState({
     fileType: 'Any',
@@ -92,6 +95,18 @@ export function MyFiles() {
       .eq('parent_id', currentFolder?.id || null)
       .order('name', { ascending: true });
 
+    if (currentFolder) {
+      const { data: folderData } = await supabase
+        .from('folders')
+        .select('is_leaf')
+        .eq('id', currentFolder.id)
+        .maybeSingle();
+
+      if (folderData) {
+        setCurrentFolder({ ...currentFolder, is_leaf: folderData.is_leaf });
+      }
+    }
+
     setFiles(filesData || []);
     setFolders(foldersData || []);
   };
@@ -113,10 +128,19 @@ export function MyFiles() {
       tags: [],
       created_at: new Date().toISOString(),
       modified_at: new Date().toISOString(),
+      folder_id: currentFolder?.id || null,
     };
 
-    setPendingFile({ file: mockFile, name: selectedFile.name });
-    setShowModal(true);
+    const isLeafFolder = currentFolder?.is_leaf === true;
+
+    if (isLeafFolder) {
+      setNCARPendingFile({ file: mockFile, rawFile: selectedFile });
+      setShowNCARModal(true);
+    } else {
+      setPendingFile({ file: mockFile, name: selectedFile.name });
+      setShowModal(true);
+    }
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -166,6 +190,23 @@ export function MyFiles() {
   const handleVersionUploadSuccess = () => {
     loadFiles();
     showToast('New version uploaded successfully');
+  };
+
+  const handleNCARSave = async (metadata: NCARMetadata) => {
+    if (!ncarPendingFile || !currentDepartment) {
+      throw new Error('Missing file or department information');
+    }
+
+    const newFile: File = {
+      ...ncarPendingFile.file,
+      confidentiality: metadata.confidentiality.toLowerCase() as any,
+      status: metadata.documentStatus.toLowerCase() as any,
+    };
+
+    setFiles([newFile, ...files]);
+    showToast('Document uploaded with NCAR metadata');
+    setNCARPendingFile(null);
+    setShowNCARModal(false);
   };
 
   const showToast = (message: string) => {
@@ -867,6 +908,20 @@ export function MyFiles() {
           departmentId={currentDepartment.id}
           onClose={() => setVersionUploadFile(null)}
           onSuccess={handleVersionUploadSuccess}
+        />
+      )}
+
+      {showNCARModal && ncarPendingFile && (
+        <NCARMetadataModal
+          mode="upload"
+          fileName={ncarPendingFile.file.name}
+          fileData={ncarPendingFile.rawFile}
+          folderId={currentFolder?.id || null}
+          onClose={() => {
+            setShowNCARModal(false);
+            setNCARPendingFile(null);
+          }}
+          onSave={handleNCARSave}
         />
       )}
     </div>
