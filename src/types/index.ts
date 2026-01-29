@@ -30,6 +30,33 @@ export interface User {
   can_read_top_secret_docs?: boolean;
   can_change_edit_archived_docs_status?: boolean;
   can_manage_document_permissions?: boolean;
+  site_role?: 'Site Manager' | 'Permission Manager' | 'Contributor' | 'Consumer' | 'Collaborator';
+}
+
+export interface UserDepartmentRole {
+  id: string;
+  user_id: string;
+  department_id: string;
+  role: 'Department User' | 'Department Manager';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserDepartmentPermissions {
+  id: string;
+  user_id: string;
+  department_id: string;
+  can_access_confidential: boolean;
+  can_access_secret: boolean;
+  can_access_top_secret: boolean;
+  can_access_personal_data: boolean;
+  can_manage_legal_hold: boolean;
+  can_view_archived: boolean;
+  can_view_confidential_archived: boolean;
+  can_view_secret_archived: boolean;
+  can_view_top_secret_archived: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DepartmentMember {

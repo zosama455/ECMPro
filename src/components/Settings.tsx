@@ -10,9 +10,11 @@ import {
   UserPlus,
   Mail,
   Shield,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
+import { ManageMemberPermissionsModal } from './ManageMemberPermissionsModal';
 
 type SettingsTab = 'profile' | 'company' | 'departments' | 'team' | 'security' | 'preferences';
 
@@ -23,6 +25,8 @@ export function Settings() {
   const [loading, setLoading] = useState(false);
   const [enablePermissionsScreen, setEnablePermissionsScreen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
 
   useEffect(() => {
     if (activeTab === 'team') {
@@ -76,6 +80,15 @@ export function Settings() {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleManagePermissions = (member: any) => {
+    setSelectedMember(member);
+    setShowPermissionsModal(true);
+  };
+
+  const handlePermissionsSaved = () => {
+    loadTeamMembers();
   };
 
   const tabs = [
@@ -288,18 +301,23 @@ export function Settings() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
+                        {(user?.role === 'admin' || user?.site_role === 'Permission Manager') && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {loading ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan={(user?.role === 'admin' || user?.site_role === 'Permission Manager') ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
                             Loading...
                           </td>
                         </tr>
                       ) : teamMembers.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan={(user?.role === 'admin' || user?.site_role === 'Permission Manager') ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
                             No team members found
                           </td>
                         </tr>
@@ -336,6 +354,17 @@ export function Settings() {
                                 Active
                               </span>
                             </td>
+                            {(user?.role === 'admin' || user?.site_role === 'Permission Manager') && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleManagePermissions(member)}
+                                  className="px-3 py-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                  <SettingsIcon className="w-4 h-4" />
+                                  Manage Permissions
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -343,6 +372,19 @@ export function Settings() {
                   </table>
                 </div>
               </div>
+            )}
+
+            {showPermissionsModal && selectedMember && (
+              <ManageMemberPermissionsModal
+                isOpen={showPermissionsModal}
+                onClose={() => {
+                  setShowPermissionsModal(false);
+                  setSelectedMember(null);
+                }}
+                member={selectedMember}
+                departments={departments}
+                onSave={handlePermissionsSaved}
+              />
             )}
 
             {activeTab === 'security' && (
