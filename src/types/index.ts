@@ -59,6 +59,22 @@ export interface UserDepartmentPermissions {
   updated_at: string;
 }
 
+export interface UserGlobalPermissions {
+  id: string;
+  user_id: string;
+  can_create_correspondence: boolean;
+  can_edit_correspondence: boolean;
+  can_delete_correspondence: boolean;
+  can_forward_correspondence: boolean;
+  can_review_activity_log: boolean;
+  can_create_announcement: boolean;
+  can_archive_message: boolean;
+  can_view_dashboard: boolean;
+  can_manage_archived_messages: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DepartmentMember {
   id: string;
   user_id: string;

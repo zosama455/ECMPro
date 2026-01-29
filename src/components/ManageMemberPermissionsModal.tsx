@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { User, Department, UserDepartmentRole, UserDepartmentPermissions } from '../types';
+import { User, Department, UserDepartmentRole, UserDepartmentPermissions, UserGlobalPermissions } from '../types';
 
 interface ManageMemberPermissionsModalProps {
   isOpen: boolean;
@@ -30,6 +30,17 @@ export function ManageMemberPermissionsModal({
   const [departmentSelections, setDepartmentSelections] = useState<Record<string, DepartmentSelection>>({});
   const [selectedConfigDepartment, setSelectedConfigDepartment] = useState<string>('');
   const [permissions, setPermissions] = useState<Record<string, Partial<UserDepartmentPermissions>>>({});
+  const [globalPermissions, setGlobalPermissions] = useState<Partial<UserGlobalPermissions>>({
+    can_create_correspondence: false,
+    can_edit_correspondence: false,
+    can_delete_correspondence: false,
+    can_forward_correspondence: false,
+    can_review_activity_log: false,
+    can_create_announcement: false,
+    can_archive_message: false,
+    can_view_dashboard: true,
+    can_manage_archived_messages: false,
+  });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +63,12 @@ export function ManageMemberPermissionsModal({
       .select('*')
       .eq('user_id', member.id);
 
+    const { data: globalPerms } = await supabase
+      .from('user_global_permissions')
+      .select('*')
+      .eq('user_id', member.id)
+      .maybeSingle();
+
     const selections: Record<string, DepartmentSelection> = {};
     departments.forEach(dept => {
       const role = roles?.find(r => r.department_id === dept.id);
@@ -66,6 +83,10 @@ export function ManageMemberPermissionsModal({
     perms?.forEach(perm => {
       permsMap[perm.department_id] = perm;
     });
+
+    if (globalPerms) {
+      setGlobalPermissions(globalPerms);
+    }
 
     setDepartmentSelections(selections);
     setPermissions(permsMap);
@@ -119,6 +140,13 @@ export function ManageMemberPermissionsModal({
         ...prev[departmentId],
         [permission]: value,
       },
+    }));
+  };
+
+  const handleGlobalPermissionChange = (permission: string, value: boolean) => {
+    setGlobalPermissions(prev => ({
+      ...prev,
+      [permission]: value,
     }));
   };
 
@@ -180,6 +208,36 @@ export function ManageMemberPermissionsModal({
         await supabase
           .from('user_department_permissions')
           .insert(permsToInsert);
+      }
+
+      const { data: existingGlobalPerms } = await supabase
+        .from('user_global_permissions')
+        .select('id')
+        .eq('user_id', member.id)
+        .maybeSingle();
+
+      const globalPermsPayload = {
+        user_id: member.id,
+        can_create_correspondence: globalPermissions.can_create_correspondence || false,
+        can_edit_correspondence: globalPermissions.can_edit_correspondence || false,
+        can_delete_correspondence: globalPermissions.can_delete_correspondence || false,
+        can_forward_correspondence: globalPermissions.can_forward_correspondence || false,
+        can_review_activity_log: globalPermissions.can_review_activity_log || false,
+        can_create_announcement: globalPermissions.can_create_announcement || false,
+        can_archive_message: globalPermissions.can_archive_message || false,
+        can_view_dashboard: globalPermissions.can_view_dashboard !== false,
+        can_manage_archived_messages: globalPermissions.can_manage_archived_messages || false,
+      };
+
+      if (existingGlobalPerms) {
+        await supabase
+          .from('user_global_permissions')
+          .update(globalPermsPayload)
+          .eq('user_id', member.id);
+      } else {
+        await supabase
+          .from('user_global_permissions')
+          .insert(globalPermsPayload);
       }
 
       onSave();
@@ -391,6 +449,38 @@ export function ManageMemberPermissionsModal({
                       Please select at least one department in section 2 to configure permissions
                     </p>
                   )}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  4. Global Correspondence Permissions
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  System-wide correspondence management permissions (not department-specific)
+                </p>
+                <div className="space-y-3 border border-gray-200 rounded-lg p-4">
+                  {[
+                    { key: 'can_create_correspondence', label: 'Create Correspondence' },
+                    { key: 'can_edit_correspondence', label: 'Edit Correspondence' },
+                    { key: 'can_delete_correspondence', label: 'Delete Correspondence' },
+                    { key: 'can_forward_correspondence', label: 'Forward Correspondence' },
+                    { key: 'can_review_activity_log', label: 'Review Activity Log' },
+                    { key: 'can_create_announcement', label: 'Create Announcement' },
+                    { key: 'can_archive_message', label: 'Archive Message' },
+                    { key: 'can_view_dashboard', label: 'Dashboard View' },
+                    { key: 'can_manage_archived_messages', label: 'Manage Archived Messages' },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={globalPermissions[key as keyof UserGlobalPermissions] as boolean || false}
+                        onChange={(e) => handleGlobalPermissionChange(key, e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">{label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
