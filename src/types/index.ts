@@ -29,6 +29,7 @@ export interface User {
   can_read_secret_docs?: boolean;
   can_read_top_secret_docs?: boolean;
   can_change_edit_archived_docs_status?: boolean;
+  can_manage_document_permissions?: boolean;
 }
 
 export interface DepartmentMember {

@@ -21,10 +21,15 @@ export function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [enablePermissionsScreen, setEnablePermissionsScreen] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'team') {
       loadTeamMembers();
+    }
+    if (activeTab === 'preferences' && user?.role === 'admin') {
+      loadSystemSettings();
     }
   }, [activeTab]);
 
@@ -37,6 +42,40 @@ export function Settings() {
 
     setTeamMembers(data || []);
     setLoading(false);
+  };
+
+  const loadSystemSettings = async () => {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('*')
+      .eq('setting_key', 'enable_document_permissions_screen')
+      .maybeSingle();
+
+    if (data) {
+      setEnablePermissionsScreen(data.setting_value?.enabled || false);
+    }
+  };
+
+  const savePermissionsSetting = async () => {
+    setSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .update({
+          setting_value: { enabled: enablePermissionsScreen }
+        })
+        .eq('setting_key', 'enable_document_permissions_screen');
+
+      if (!error) {
+        alert('Settings saved successfully');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (err) {
+      alert('Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   const tabs = [
@@ -369,6 +408,36 @@ export function Settings() {
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Manage Notifications</h2>
 
                 <div className="space-y-6">
+                  {user?.role === 'admin' && (
+                    <div className="border-b border-gray-200 pb-6 mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Permissions Management</h3>
+                      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900">Enable Document Permissions Screen</p>
+                          <p className="text-sm text-gray-500">Allow users to manage document-level permissions</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={enablePermissionsScreen}
+                            onChange={(e) => setEnablePermissionsScreen(e.target.checked)}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+                      <div className="flex gap-3 mt-4">
+                        <button
+                          onClick={savePermissionsSetting}
+                          disabled={savingSettings}
+                          className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Save className="w-4 h-4" />
+                          {savingSettings ? 'Saving...' : 'Save Settings'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                       <div>

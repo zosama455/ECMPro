@@ -16,6 +16,7 @@ import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { RetentionDashboard } from './components/RetentionDashboard';
 import { ActivityAuditLog } from './components/ActivityAuditLog';
 import BatchScan from './components/BatchScan';
+import { DocumentPermissions } from './components/DocumentPermissions';
 
 type View = 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log' | 'batch-scan';
 
@@ -82,6 +83,7 @@ function AppLayout() {
         <Route path="/activity-audit-log" element={<ActivityAuditLog />} />
         <Route path="/batch-scan" element={<BatchScan />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/files/:fileId/permissions" element={<DocumentPermissions />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

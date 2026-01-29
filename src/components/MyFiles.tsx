@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Upload,
@@ -24,6 +25,7 @@ import {
   CheckCircle,
   MoreVertical,
   Edit,
+  Shield,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
@@ -38,7 +40,9 @@ type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted
 
 export function MyFiles() {
   const { currentDepartment, user } = useApp();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [permissionsEnabled, setPermissionsEnabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -70,6 +74,22 @@ export function MyFiles() {
       loadFiles();
     }
   }, [currentDepartment, currentFolder]);
+
+  useEffect(() => {
+    loadPermissionsSetting();
+  }, []);
+
+  const loadPermissionsSetting = async () => {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'enable_document_permissions_screen')
+      .maybeSingle();
+
+    if (data) {
+      setPermissionsEnabled(data.setting_value?.enabled || false);
+    }
+  };
 
   const loadFiles = async () => {
     if (!currentDepartment) return;
@@ -662,11 +682,23 @@ export function MyFiles() {
                               </button>
                               <button
                                 onClick={() => handleEditConfidentiality(file)}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
                               >
                                 <Lock className="w-4 h-4" />
                                 Edit Confidentiality
                               </button>
+                              {permissionsEnabled && user?.can_manage_document_permissions && (
+                                <button
+                                  onClick={() => {
+                                    setFileMenuOpen(null);
+                                    navigate(`/files/${file.id}/permissions`);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Shield className="w-4 h-4" />
+                                  Manage Permissions
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -824,11 +856,23 @@ export function MyFiles() {
                                 </button>
                                 <button
                                   onClick={() => handleEditConfidentiality(file)}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-200"
                                 >
                                   <Lock className="w-4 h-4" />
                                   Edit Confidentiality
                                 </button>
+                                {permissionsEnabled && user?.can_manage_document_permissions && (
+                                  <button
+                                    onClick={() => {
+                                      setFileMenuOpen(null);
+                                      navigate(`/files/${file.id}/permissions`);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <Shield className="w-4 h-4" />
+                                    Manage Permissions
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
