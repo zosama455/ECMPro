@@ -15,6 +15,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { ManageMemberPermissionsModal } from './ManageMemberPermissionsModal';
+import { AddNewUserModal } from './AddNewUserModal';
 
 type SettingsTab = 'profile' | 'company' | 'departments' | 'team' | 'security' | 'preferences';
 
@@ -27,6 +28,7 @@ export function Settings() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'team') {
@@ -277,7 +279,10 @@ export function Settings() {
                       <RefreshCw className="w-4 h-4" />
                     </button>
                     {user?.role === 'admin' && (
-                      <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2 font-medium">
+                      <button
+                        onClick={() => setShowAddUserModal(true)}
+                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2 font-medium"
+                      >
                         <UserPlus className="w-4 h-4" />
                         Add New User
                       </button>
@@ -384,6 +389,16 @@ export function Settings() {
                 member={selectedMember}
                 departments={departments}
                 onSave={handlePermissionsSaved}
+              />
+            )}
+
+            {showAddUserModal && (
+              <AddNewUserModal
+                isOpen={showAddUserModal}
+                onClose={() => setShowAddUserModal(false)}
+                companyId={company?.id || ''}
+                departments={departments}
+                onUserAdded={loadTeamMembers}
               />
             )}
 
