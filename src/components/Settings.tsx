@@ -279,7 +279,7 @@ export function Settings() {
                     {user?.role === 'admin' && (
                       <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2 font-medium">
                         <UserPlus className="w-4 h-4" />
-                        Manage Team Members
+                        Add New User
                       </button>
                     )}
                   </div>
