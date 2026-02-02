@@ -180,14 +180,26 @@ export function EnhancedUploadDialog({
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 >
                   <option value="">Select a Document Type...</option>
-                  {documentTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name} ({type.document_main_type})
-                    </option>
+                  {Object.entries(
+                    documentTypes.reduce((acc, type) => {
+                      if (!acc[type.document_main_type]) {
+                        acc[type.document_main_type] = [];
+                      }
+                      acc[type.document_main_type].push(type);
+                      return acc;
+                    }, {} as Record<string, DocumentType[]>)
+                  ).map(([category, types]) => (
+                    <optgroup key={category} label={category}>
+                      {types.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Document types available in the current department
+                  {documentTypes.length} document type{documentTypes.length !== 1 ? 's' : ''} available in this department
                 </p>
               </>
             )}
