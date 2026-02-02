@@ -34,6 +34,7 @@ import { SetConfidentialityModal } from './SetConfidentialityModal';
 import { FileCheckoutMenu } from './FileCheckoutMenu';
 import { UploadVersionModal } from './UploadVersionModal';
 import { NCARMetadataModal, NCARMetadata } from './NCARMetadataModal';
+import { EnhancedUploadDialog } from './EnhancedUploadDialog';
 
 type ViewMode = 'grid' | 'list';
 type ConfidentialityLevel = 'public' | 'internal' | 'confidential' | 'restricted' | 'secret' | 'top_secret';
@@ -59,6 +60,8 @@ export function MyFiles() {
   const [versionUploadFile, setVersionUploadFile] = useState<File | null>(null);
   const [showNCARModal, setShowNCARModal] = useState(false);
   const [ncarPendingFile, setNCARPendingFile] = useState<{ file: File; rawFile: File } | null>(null);
+  const [showEnhancedUpload, setShowEnhancedUpload] = useState(false);
+  const [enhancedUploadData, setEnhancedUploadData] = useState<{ file: File; rawFile: File } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState({
     fileType: 'Any',
@@ -157,8 +160,8 @@ export function MyFiles() {
       setNCARPendingFile({ file: mockFile, rawFile: selectedFile });
       setShowNCARModal(true);
     } else {
-      setPendingFile({ file: mockFile, name: selectedFile.name });
-      setShowModal(true);
+      setEnhancedUploadData({ file: mockFile, rawFile: selectedFile });
+      setShowEnhancedUpload(true);
     }
 
     if (fileInputRef.current) {
@@ -227,6 +230,25 @@ export function MyFiles() {
     showToast('Document uploaded with NCAR metadata');
     setNCARPendingFile(null);
     setShowNCARModal(false);
+  };
+
+  const handleEnhancedUploadConfirm = (data: {
+    confidentiality: ConfidentialityLevel;
+    documentTypeId: string;
+    documentTypeName: string;
+  }) => {
+    if (!enhancedUploadData) return;
+
+    const newFile: File = {
+      ...enhancedUploadData.file,
+      confidentiality: data.confidentiality,
+      document_type_id: data.documentTypeId,
+    };
+
+    setFiles([newFile, ...files]);
+    showToast(`Document uploaded successfully to ${data.documentTypeName}`);
+    setEnhancedUploadData(null);
+    setShowEnhancedUpload(false);
   };
 
   const showToast = (message: string) => {
@@ -966,6 +988,21 @@ export function MyFiles() {
             setNCARPendingFile(null);
           }}
           onSave={handleNCARSave}
+        />
+      )}
+
+      {showEnhancedUpload && enhancedUploadData && currentDepartment && (
+        <EnhancedUploadDialog
+          isOpen={showEnhancedUpload}
+          onClose={() => {
+            setShowEnhancedUpload(false);
+            setEnhancedUploadData(null);
+          }}
+          onConfirm={handleEnhancedUploadConfirm}
+          fileName={enhancedUploadData.file.name}
+          departmentId={currentDepartment.id}
+          currentFolder={currentFolder}
+          breadcrumbs={breadcrumbs}
         />
       )}
     </div>

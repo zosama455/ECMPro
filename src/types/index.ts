@@ -107,6 +107,7 @@ export interface File {
   created_at: string;
   modified_at: string;
   assignees?: string[];
+  document_type_id?: string;
 }
 
 export interface RecentActivity {
