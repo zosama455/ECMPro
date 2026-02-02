@@ -119,19 +119,6 @@ export function EnhancedUploadDialog({
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex gap-3">
-              <ShieldAlert className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-900 mb-1">Important Information</p>
-                <p className="text-sm text-blue-700">
-                  Uploading is allowed only within a Document Type folder.
-                  The system will automatically store your document in the correct location.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />

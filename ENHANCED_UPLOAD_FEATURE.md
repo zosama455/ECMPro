@@ -1,12 +1,12 @@
 # Enhanced Upload Feature
 
 ## Overview
-The Enhanced Upload feature has been integrated into the My Files section. When users upload files from department folders (non-Document Type folders), they are presented with an enhanced dialog that guides them through proper document classification.
+The Enhanced Upload feature has been integrated into the My Files section. Users can upload files at any level within the department hierarchy. When uploading from non-Document Type folders, users are presented with an enhanced dialog that guides them through proper document classification.
 
 ## User Flow
 
 ### When Upload is Triggered
-1. User navigates to any department folder (not a Document Type folder)
+1. User navigates to any folder at any level within the department hierarchy
 2. User clicks "Upload File" button
 3. User selects a file from their computer
 4. Enhanced Upload Dialog appears
@@ -37,11 +37,7 @@ The dialog displays:
      - Budget Support Correspondence
      - And more...
 
-4. **Information Banner**:
-   - Blue alert box explaining that documents must be stored in Document Type folders
-   - System will automatically handle proper storage location
-
-5. **Dynamic Path Display**:
+4. **Dynamic Path Display**:
    - Shows the resolved target path where the document will be stored
    - Updates dynamically as the user selects a document type
    - Example: HR > Category-1 > Sub-category-1 > Payroll Record or Card
@@ -62,9 +58,9 @@ The dialog displays:
   - Handles user input validation
 
 - **MyFiles.tsx**: Updated to integrate the new dialog
-  - Detects if upload is from a leaf folder (Document Type) or not
-  - Shows EnhancedUploadDialog for non-leaf folders
-  - Shows NCARMetadataModal for leaf folders (existing behavior)
+  - Detects if upload is from a leaf folder (Document Type) or regular department folder
+  - Shows EnhancedUploadDialog for regular department folders at any level
+  - Shows NCARMetadataModal for Document Type folders (existing behavior)
 
 ### Database
 - Document types are stored in the `document_types` table
