@@ -41,10 +41,10 @@ export function EnhancedUploadDialog({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && departmentId) {
+    if (isOpen) {
       loadDocumentTypes();
     }
-  }, [isOpen, departmentId]);
+  }, [isOpen]);
 
   const loadDocumentTypes = async () => {
     setLoading(true);
@@ -52,7 +52,6 @@ export function EnhancedUploadDialog({
       const { data, error } = await supabase
         .from('document_types')
         .select('id, name, department_id, document_main_type')
-        .eq('department_id', departmentId)
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -170,7 +169,7 @@ export function EnhancedUploadDialog({
               </div>
             ) : documentTypes.length === 0 ? (
               <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-500">
-                No document types available for this department
+                No document types available
               </div>
             ) : (
               <>
@@ -199,7 +198,7 @@ export function EnhancedUploadDialog({
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  {documentTypes.length} document type{documentTypes.length !== 1 ? 's' : ''} available in this department
+                  Select the appropriate document type for this file
                 </p>
               </>
             )}
