@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { RetentionDetailsModal } from './RetentionDetailsModal';
 
 interface WidgetData {
   id: string;
@@ -31,6 +32,8 @@ export function RetentionDashboard() {
   const { user, currentDepartment } = useApp();
   const navigate = useNavigate();
   const [hoveredWidget, setHoveredWidget] = useState<string | null>(null);
+  const [selectedWidget, setSelectedWidget] = useState<WidgetData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Mock permission check - in production, this would come from user.can_access_archived_docs
   const hasAccess = user?.role === 'admin' || true; // For demo, allow access
@@ -124,10 +127,9 @@ export function RetentionDashboard() {
     },
   ];
 
-  const handleWidgetClick = (route: string) => {
-    // Navigate to mock route (in production, these would be real routes)
-    console.log('Navigating to:', route);
-    // navigate(route);
+  const handleWidgetClick = (widget: WidgetData) => {
+    setSelectedWidget(widget);
+    setIsModalOpen(true);
   };
 
   const handleRefresh = () => {
@@ -194,7 +196,7 @@ export function RetentionDashboard() {
             return (
               <div
                 key={widget.id}
-                onClick={() => handleWidgetClick(widget.route)}
+                onClick={() => handleWidgetClick(widget)}
                 onMouseEnter={() => setHoveredWidget(widget.id)}
                 onMouseLeave={() => setHoveredWidget(null)}
                 className={`bg-white rounded-xl shadow-sm border-2 p-6 cursor-pointer transition-all transform hover:scale-102 ${
@@ -292,6 +294,15 @@ export function RetentionDashboard() {
           </div>
         </div>
       </div>
+
+      <RetentionDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedWidget(null);
+        }}
+        widget={selectedWidget}
+      />
     </div>
   );
 }
