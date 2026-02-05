@@ -18,6 +18,7 @@ import { ActivityAuditLog } from './components/ActivityAuditLog';
 import BatchScan from './components/BatchScan';
 import { DocumentPermissions } from './components/DocumentPermissions';
 import { EnhancedUploadDialogMockup } from './components/EnhancedUploadDialog.mockup';
+import { FolderSearchUIMockup } from './components/FolderSearchUI.mockup';
 
 type View = 'dashboard' | 'files' | 'settings' | 'starred' | 'shared' | 'archived' | 'trash' | 'correspondences' | 'retention' | 'audit-log' | 'batch-scan';
 
@@ -86,6 +87,7 @@ function AppLayout() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/files/:fileId/permissions" element={<DocumentPermissions />} />
         <Route path="/mockup/enhanced-upload" element={<EnhancedUploadDialogMockup />} />
+        <Route path="/mockup/folder-search" element={<FolderSearchUIMockup />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
