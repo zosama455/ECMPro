@@ -286,6 +286,11 @@ export function MyFiles() {
     }
   };
 
+  const clearFolderScope = () => {
+    setCurrentFolder(null);
+    setBreadcrumbs([]);
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -474,6 +479,37 @@ export function MyFiles() {
               </div>
             </div>
 
+            {currentFolder && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <Search className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span className="text-blue-900 font-medium">Searching in:</span>
+                  <div className="flex items-center gap-1 text-blue-700">
+                    {breadcrumbs.map((folder, index) => (
+                      <div key={folder.id} className="flex items-center gap-1">
+                        <button
+                          onClick={() => navigateToBreadcrumb(index)}
+                          className="hover:underline"
+                        >
+                          {folder.name}
+                        </button>
+                        {index < breadcrumbs.length - 1 && (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={clearFolderScope}
+                  className="flex items-center gap-1.5 text-blue-700 hover:text-blue-900 font-medium text-sm transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Clear scope
+                </button>
+              </div>
+            )}
+
             {showFilters && (
               <div className="pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
@@ -627,8 +663,23 @@ export function MyFiles() {
 
           {viewMode === 'grid' ? (
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {folders.map((folder) => (
+              {folders.length === 0 && filteredFiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {currentFolder ? 'No documents found in this folder' : 'No documents found'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {currentFolder
+                      ? 'Try adjusting your search terms or filters, or search in a different folder.'
+                      : 'Try adjusting your search terms or filters.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {folders.map((folder) => (
                   <button
                     key={folder.id}
                     onClick={() => navigateToFolder(folder)}
@@ -778,12 +829,28 @@ export function MyFiles() {
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-6">
-              <div className="space-y-3">
-                {folders.map((folder) => (
+              {folders.length === 0 && filteredFiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {currentFolder ? 'No documents found in this folder' : 'No documents found'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {currentFolder
+                      ? 'Try adjusting your search terms or filters, or search in a different folder.'
+                      : 'Try adjusting your search terms or filters.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {folders.map((folder) => (
                   <button
                     key={folder.id}
                     onClick={() => navigateToFolder(folder)}
@@ -903,7 +970,8 @@ export function MyFiles() {
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
