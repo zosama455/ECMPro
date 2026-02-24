@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User,
   Building2,
@@ -11,6 +11,9 @@ import {
   Mail,
   Shield,
   Settings as SettingsIcon,
+  Upload,
+  X,
+  PenTool,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
@@ -29,6 +32,9 @@ export function Settings() {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (activeTab === 'team') {
@@ -91,6 +97,36 @@ export function Settings() {
 
   const handlePermissionsSaved = () => {
     loadTeamMembers();
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size must be less than 2MB');
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+      }
+
+      setSignatureFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignatureImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveSignature = () => {
+    setSignatureImage(null);
+    setSignatureFile(null);
+    if (signatureInputRef.current) {
+      signatureInputRef.current.value = '';
+    }
   };
 
   const tabs = [
@@ -191,6 +227,73 @@ export function Settings() {
                         disabled
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                       />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Digital Signature</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Upload your signature to use when signing correspondence documents
+                    </p>
+
+                    <div className="space-y-4">
+                      {signatureImage ? (
+                        <div className="border-2 border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                              <PenTool className="w-4 h-4" />
+                              <span className="font-medium">Current Signature</span>
+                            </div>
+                            <button
+                              onClick={handleRemoveSignature}
+                              className="p-1 hover:bg-gray-100 rounded transition-colors"
+                              title="Remove signature"
+                            >
+                              <X className="w-4 h-4 text-gray-500" />
+                            </button>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-6 flex items-center justify-center">
+                            <img
+                              src={signatureImage}
+                              alt="Signature"
+                              className="max-h-32 max-w-full object-contain"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <PenTool className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">No signature uploaded</p>
+                          <p className="text-xs text-gray-500">Upload your signature to use in correspondence</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3">
+                        <input
+                          ref={signatureInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleSignatureUpload}
+                          className="hidden"
+                        />
+                        <button
+                          onClick={() => signatureInputRef.current?.click()}
+                          className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          {signatureImage ? 'Change Signature' : 'Upload Signature'}
+                        </button>
+                        {signatureFile && (
+                          <span className="text-sm text-gray-600">
+                            {signatureFile.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG or GIF. Max size 2MB. Recommended: Transparent PNG for best results
+                      </p>
                     </div>
                   </div>
 
